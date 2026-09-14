@@ -367,7 +367,7 @@
 </head>
 <body>
 
-<div class="version-tag">v3.5.12</div>
+<div class="version-tag">v3.5.13</div>
 
 <!-- Login Overlay -->
 <div id="loginOverlay">
@@ -544,6 +544,17 @@
       document.getElementById('leaderboardContainer').style.display = 'block';
       renderLeaderboard();
     }
+  }
+
+  // Helper to calculate item popularity score (Must Try = 2 pts, Want to Try = 1 pt)
+  function getPopularityScore(itemId) {
+    let score = 0;
+    USERS.forEach(u => {
+      let c = getCustomCategory(itemId, u);
+      if (c === 'must') score += 2;
+      else if (c === 'want') score += 1;
+    });
+    return score;
   }
 
   // Auto-Save Configuration Defaults Helper
@@ -842,17 +853,7 @@
 
     // --- SORTING ENGINE ---
     if (currentSort === 'popularity') {
-      filtered.sort((a, b) => {
-        let popA = 0, popB = 0;
-        USERS.forEach(u => {
-          let cA = getCustomCategory(a.id, u);
-          if (cA === 'must') popA += 2; else if (cA === 'want') popA += 1;
-          
-          let cB = getCustomCategory(b.id, u);
-          if (cB === 'must') popB += 2; else if (cB === 'want') popB += 1;
-        });
-        return popB - popA; // Descending
-      });
+      filtered.sort((a, b) => getPopularityScore(b.id) - getPopularityScore(a.id));
     } else if (currentSort === 'rating') {
       filtered.sort((a, b) => {
         let sumA = 0, countA = 0, sumB = 0, countB = 0;
@@ -876,6 +877,10 @@
         if (!groups[item.location]) groups[item.location] = [];
         groups[item.location].push(item);
       });
+      // Sort items within each location by popularity score (Must Try = 2, Want to Try = 1)
+      for (const loc in groups) {
+        groups[loc].sort((a, b) => getPopularityScore(b.id) - getPopularityScore(a.id));
+      }
       document.getElementById('toggleText').textContent = 'All Locations';
     } else if (currentSort === 'popularity') {
       groups['🔥 Ranked by Popularity'] = filtered;
@@ -1086,7 +1091,6 @@
     isGlobalCollapsed = !isGlobalCollapsed;
     e.currentTarget.classList.toggle('collapsed', isGlobalCollapsed);
     
-    // Support toggle collapse for dynamically generated groups as well
     if (currentSort === 'location') {
       ITEMS.forEach(item => { folderStates[item.location] = isGlobalCollapsed; });
     } else if (currentSort === 'popularity') {
