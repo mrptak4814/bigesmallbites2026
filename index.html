@@ -121,7 +121,7 @@
   }
   .nav-tab.active { color: #fff; border-bottom-color: var(--bige-red); }
 
-  /* Toolbar (Search & Filter) */
+  /* Toolbar (Search, Sort & Filter) */
   .toolbar { background: var(--bige-blue); padding-bottom: 12px; }
   
   .progress-card {
@@ -143,6 +143,15 @@
   .search-input {
     width: 100%; padding: 12px 16px; border-radius: 8px; border: none;
     font-size: 0.95rem; outline: none; box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+  }
+
+  .sort-bar {
+    max-width: 900px; margin: 12px auto 0; padding: 0 12px; display: flex; align-items: center; gap: 8px;
+  }
+  .sort-label { font-size: 0.8rem; font-weight: 700; color: #cbd5e1; text-transform: uppercase; }
+  .sort-select {
+    flex: 1; padding: 8px 12px; border-radius: 6px; border: none; background: rgba(255,255,255,0.95);
+    font-size: 0.85rem; font-weight: 700; color: var(--bige-blue); outline: none;
   }
 
   .filter-bar {
@@ -335,7 +344,7 @@
 </head>
 <body>
 
-<div class="version-tag">v3.5.10</div>
+<div class="version-tag">v3.5.11</div>
 
 <!-- Login Overlay -->
 <div id="loginOverlay">
@@ -371,9 +380,20 @@
         <div class="progress-bar-fill" id="progressBar"></div>
       </div>
     </div>
+    
     <div class="search-wrap">
       <input type="text" id="searchInput" class="search-input" placeholder="Search by food, vendor, or ingredient...">
     </div>
+    
+    <div class="sort-bar">
+      <span class="sort-label">Sort:</span>
+      <select id="sortSelect" class="sort-select">
+        <option value="location">📍 Group by Location</option>
+        <option value="popularity">🔥 By Popularity (Most Wanted)</option>
+        <option value="rating">⭐ By Average Rating</option>
+      </select>
+    </div>
+
     <div class="filter-bar">
       <button class="filter-chip active" data-filter="all">All Items</button>
       <button class="filter-chip" data-filter="must">⭐ Must Try</button>
@@ -389,7 +409,7 @@
     <svg class="chevron global-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
       <polyline points="6 9 12 15 18 9"></polyline>
     </svg>
-    <span>All Locations</span>
+    <span id="toggleText">All Locations</span>
   </div>
   <div id="foodListRender"></div>
 </main>
@@ -456,8 +476,10 @@
   USERS.forEach(u => allUsersState[u] = { checked: {}, notes: {}, ratings: {}, rankedList: [], categories: {}, savedDefaults: null });
   let appState = allUsersState[currentUser];
   
-  // Advanced Filter Engine State
+  // Advanced Filter & Sort Engine State
   let filterState = { must: false, want: false, status: 'all' };
+  let currentSort = 'location'; // default sort
+
   let folderStates = {}; 
   ITEMS.forEach(item => { folderStates[item.location] = false; });
   let isGlobalCollapsed = false;
@@ -581,7 +603,7 @@
     };
   }
 
-  // Listens to the entire 'bites_users' collection to enable side-by-side scoring and categorization
+  // Listens to the entire 'bites_users' collection
   function listenToAllUsers() {
     document.getElementById('saveIndicator').textContent = 'Syncing...';
     
@@ -717,7 +739,7 @@
     const checkedCount = appState.checked ? Object.values(appState.checked).filter(Boolean).length : 0;
     const pct = Math.round((checkedCount / total) * 100);
     
-    // Check against dynamically assigned categories instead of static JSON
+    // Check against dynamically assigned categories
     const mustTries = ITEMS.filter(i => getCustomCategory(i.id, viewingUser) === 'must');
     const mustChecked = mustTries.filter(i => appState.checked && appState.checked[i.id]).length;
 
@@ -758,7 +780,7 @@
     const query = searchQuery.trim().toLowerCase();
     const isReadOnly = viewingUser !== currentUser;
 
-    const filtered = ITEMS.filter(item => {
+    let filtered = ITEMS.filter(item => {
       const isChecked = appState.checked && Boolean(appState.checked[item.id]);
       const currentItemCat = getCustomCategory(item.id, viewingUser);
       
@@ -784,12 +806,54 @@
       return;
     }
 
-    const groups = {};
-    filtered.forEach(item => {
-      if (!groups[item.location]) groups[item.location] = [];
-      groups[item.location].push(item);
-    });
+    // --- SORTING ENGINE ---
+    if (currentSort === 'popularity') {
+      filtered.sort((a, b) => {
+        let popA = 0, popB = 0;
+        USERS.forEach(u => {
+          let cA = getCustomCategory(a.id, u);
+          if (cA === 'must') popA += 2; else if (cA === 'want') popA += 1;
+          
+          let cB = getCustomCategory(b.id, u);
+          if (cB === 'must') popB += 2; else if (cB === 'want') popB += 1;
+        });
+        return popB - popA; // Descending
+      });
+    } else if (currentSort === 'rating') {
+      filtered.sort((a, b) => {
+        let sumA = 0, countA = 0, sumB = 0, countB = 0;
+        USERS.forEach(u => {
+          let rA = (allUsersState[u] && allUsersState[u].ratings && allUsersState[u].ratings[a.id]) || 0;
+          if (rA > 0) { sumA += rA; countA++; }
+          
+          let rB = (allUsersState[u] && allUsersState[u].ratings && allUsersState[u].ratings[b.id]) || 0;
+          if (rB > 0) { sumB += rB; countB++; }
+        });
+        let avgA = countA === 0 ? 0 : sumA / countA;
+        let avgB = countB === 0 ? 0 : sumB / countB;
+        return avgB - avgA; // Descending
+      });
+    }
 
+    // --- GROUPING ENGINE ---
+    const groups = {};
+    if (currentSort === 'location') {
+      filtered.forEach(item => {
+        if (!groups[item.location]) groups[item.location] = [];
+        groups[item.location].push(item);
+      });
+      document.getElementById('toggleText').textContent = 'All Locations';
+    } else if (currentSort === 'popularity') {
+      groups['🔥 Ranked by Popularity'] = filtered;
+      if (folderStates['🔥 Ranked by Popularity'] === undefined) folderStates['🔥 Ranked by Popularity'] = false;
+      document.getElementById('toggleText').textContent = 'Ranked by Popularity';
+    } else if (currentSort === 'rating') {
+      groups['⭐ Ranked by Average Rating'] = filtered;
+      if (folderStates['⭐ Ranked by Average Rating'] === undefined) folderStates['⭐ Ranked by Average Rating'] = false;
+      document.getElementById('toggleText').textContent = 'Ranked by Avg Rating';
+    }
+
+    // --- RENDERING ---
     for (const [location, groupItems] of Object.entries(groups)) {
       if (folderStates[location] === undefined) folderStates[location] = false;
       const isCollapsed = folderStates[location];
@@ -848,21 +912,22 @@
           </select>
         `;
 
-        // Generate All Other Users' Activity Badges
+        // Generate Universal Group Badges
         let friendActivityHtml = '';
         let mustUsers = [];
         let wantUsers = [];
         let ratingsHtml = '';
 
         USERS.forEach(u => {
+          const uState = allUsersState[u] || {};
+          const uCat = getCustomCategory(item.id, u);
+
+          if (uCat === 'must') mustUsers.push(u);
+          else if (uCat === 'want') wantUsers.push(u);
+
+          // Only show other users' star ratings
           if (u !== viewingUser) {
-            const uState = allUsersState[u] || {};
             const uRating = (uState.ratings && uState.ratings[item.id]) ? uState.ratings[item.id] : 0;
-            const uCat = getCustomCategory(item.id, u);
-
-            if (uCat === 'must') mustUsers.push(u);
-            else if (uCat === 'want') wantUsers.push(u);
-
             if (uRating > 0) {
               const c = USER_COLORS[u] || { bg: "#e0f2fe", text: "#0369a1", border: "#bae6fd" };
               ratingsHtml += `<span class="friend-rating-badge" style="background:${c.bg}; color:${c.text}; border-color:${c.border}">${u}: ★ ${uRating}</span>`;
@@ -977,10 +1042,25 @@
     });
   });
 
+  // Sort Listener
+  document.getElementById('sortSelect').addEventListener('change', (e) => {
+    currentSort = e.target.value;
+    renderItems();
+  });
+
   document.getElementById('btnToggleCollapse').addEventListener('click', (e) => {
     isGlobalCollapsed = !isGlobalCollapsed;
     e.currentTarget.classList.toggle('collapsed', isGlobalCollapsed);
-    ITEMS.forEach(item => { folderStates[item.location] = isGlobalCollapsed; });
+    
+    // Support toggle collapse for dynamically generated groups as well
+    if (currentSort === 'location') {
+      ITEMS.forEach(item => { folderStates[item.location] = isGlobalCollapsed; });
+    } else if (currentSort === 'popularity') {
+      folderStates['🔥 Ranked by Popularity'] = isGlobalCollapsed;
+    } else if (currentSort === 'rating') {
+      folderStates['⭐ Ranked by Average Rating'] = isGlobalCollapsed;
+    }
+    
     renderItems();
   });
 
