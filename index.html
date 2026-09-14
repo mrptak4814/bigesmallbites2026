@@ -69,6 +69,23 @@
     top: 0;
     z-index: 100;
     box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+    transition: padding 0.3s ease;
+  }
+  body.scrolled-down header {
+    padding-top: 10px;
+  }
+
+  /* Collapsible Header Sections */
+  .header-collapsible-group {
+    max-height: 300px;
+    opacity: 1;
+    overflow: hidden;
+    transition: max-height 0.3s ease, opacity 0.2s ease;
+  }
+  body.scrolled-down .header-collapsible-group {
+    max-height: 0;
+    opacity: 0;
+    pointer-events: none;
   }
 
   .header-top {
@@ -121,14 +138,20 @@
   }
   .nav-tab.active { color: #fff; border-bottom-color: var(--bige-red); }
 
-  /* Toolbar (Search, Sort & Filter) */
+  /* Toolbar (Search & Filter) */
   .toolbar { background: var(--bige-blue); padding-bottom: 12px; }
   
   .progress-card {
     max-width: 900px; margin: 12px auto;
     background: rgba(0,0,0,0.25); padding: 12px 14px;
     border-radius: 8px; display: flex; flex-direction: column; gap: 8px;
+    max-height: 100px; opacity: 1; overflow: hidden;
+    transition: all 0.3s ease;
   }
+  body.scrolled-down .progress-card {
+    max-height: 0; opacity: 0; margin: 0 auto; padding: 0 14px; pointer-events: none;
+  }
+
   .progress-stats {
     display: flex; justify-content: space-between;
     font-size: 0.85rem; font-weight: 600;
@@ -344,7 +367,7 @@
 </head>
 <body>
 
-<div class="version-tag">v3.5.11</div>
+<div class="version-tag">v3.5.12</div>
 
 <!-- Login Overlay -->
 <div id="loginOverlay">
@@ -353,21 +376,23 @@
   <div id="loginButtons"></div>
 </div>
 
-<header>
-  <div class="header-top">
-    <div class="app-title">🎪 The Big E Bites</div>
-    <div class="badge-saved" id="saveIndicator">Connecting...</div>
-  </div>
+<header id="mainHeader">
+  <div class="header-collapsible-group">
+    <div class="header-top">
+      <div class="app-title">🎪 The Big E Bites</div>
+      <div class="badge-saved" id="saveIndicator">Connecting...</div>
+    </div>
 
-  <div class="viewer-wrap">
-    <span class="viewer-label">Viewing:</span>
-    <select id="userDropdown" class="viewer-select"></select>
-    <button class="btn-switch-user" id="btnSwitchUser">Change</button>
-  </div>
+    <div class="viewer-wrap">
+      <span class="viewer-label">Viewing:</span>
+      <select id="userDropdown" class="viewer-select"></select>
+      <button class="btn-switch-user" id="btnSwitchUser">Change</button>
+    </div>
 
-  <div class="nav-tabs">
-    <button class="nav-tab active" id="tabMenu" onclick="switchTab('menu')">Food Menu</button>
-    <button class="nav-tab" id="tabLeaderboard" onclick="switchTab('leaderboard')">Leaderboard</button>
+    <div class="nav-tabs">
+      <button class="nav-tab active" id="tabMenu" onclick="switchTab('menu')">Food Menu</button>
+      <button class="nav-tab" id="tabLeaderboard" onclick="switchTab('leaderboard')">Leaderboard</button>
+    </div>
   </div>
 
   <div id="toolbarMenu" class="toolbar">
@@ -486,6 +511,15 @@
   let searchQuery = '';
   let rankState = null;
   let unsubscribeSnapshot = null;
+
+  // Header Scroll Listener
+  window.addEventListener('scroll', () => {
+    if (window.scrollY > 40) {
+      document.body.classList.add('scrolled-down');
+    } else {
+      document.body.classList.remove('scrolled-down');
+    }
+  });
 
   document.getElementById('btnSwitchUser').addEventListener('click', () => {
     if (confirm("Sign out of your current profile?")) {
