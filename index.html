@@ -241,7 +241,7 @@
 
   /* Read-Only State for Cards */
   .readonly-mode .custom-checkbox { opacity: 0.6; cursor: not-allowed; }
-  .readonly-mode .star-hitbox { cursor: not-allowed; }
+  .readonly-mode .rating-input { cursor: not-allowed; }
   .readonly-mode .rank-badge.unranked { opacity: 0.6; cursor: not-allowed; }
 
   .card-content { flex: 1; min-width: 0; }
@@ -283,23 +283,17 @@
   .food-card.checked .feedback-area, 
   .food-card.has-rating .feedback-area { display: block; }
 
-  .star-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
-  .star-label { font-size: 0.85rem; font-weight: 700; color: var(--bige-blue); text-transform: uppercase;}
-  .stars-wrap { display: flex; gap: 4px; }
-  .star {
-    position: relative; display: inline-block; width: 28px; height: 28px;
-    font-size: 28px; line-height: 1; color: #cbd5e1; user-select: none;
-  }
-  .star::before { content: '★'; }
-  .star.full { color: #f59e0b; }
-  .star.half { position: relative; color: #cbd5e1; }
-  .star.half::after {
-    content: '★'; position: absolute; left: 0; top: 0;
-    color: #f59e0b; width: 50%; overflow: hidden; pointer-events: none;
-  }
-  .star-hitbox { position: absolute; top: 0; width: 50%; height: 100%; z-index: 2; cursor: pointer; }
-  .star-hitbox.left { left: 0; } .star-hitbox.right { right: 0; }
+  .rating-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+  .rating-label { font-size: 0.85rem; font-weight: 700; color: var(--bige-blue); text-transform: uppercase;}
   
+  .rating-input {
+    width: 80px; padding: 6px 10px; border-radius: 6px; border: 1px solid var(--border);
+    font-size: 1rem; font-weight: 800; color: var(--bige-blue); text-align: center;
+    background: #f8fafc; outline: none; transition: all 0.2s;
+  }
+  .rating-input:focus { border-color: var(--bige-blue); background: #fff; box-shadow: 0 0 0 2px rgba(35, 29, 73, 0.1); }
+  .rating-input[readonly] { background: #e2e8f0; border-color: #cbd5e1; color: #64748b; }
+
   .rank-badge {
     display: inline-block; padding: 4px 8px; background: var(--bige-blue);
     color: #fff; font-size: 0.75rem; font-weight: 800; border-radius: 4px;
@@ -328,7 +322,7 @@
   .rank-details { flex: 1; min-width: 0; }
   .rank-name { font-weight: 800; color: var(--bige-blue); font-size: 1rem; }
   .rank-vendor { font-size: 0.8rem; color: #64748b; text-transform: uppercase; }
-  .rank-stars { color: #f59e0b; font-size: 0.9rem; letter-spacing: 2px; }
+  .rank-stars { color: #f59e0b; font-size: 1rem; font-weight: 800; }
 
   #rankModal {
     position: fixed; top: 0; left: 0; width: 100%; height: 100%;
@@ -367,7 +361,7 @@
 </head>
 <body>
 
-<div class="version-tag">v3.5.13</div>
+<div class="version-tag">v3.5.14</div>
 
 <!-- Login Overlay -->
 <div id="loginOverlay">
@@ -487,10 +481,10 @@
   
   // Permanent User Rating Colors
   const USER_COLORS = {
-    "Marek": { bg: "#f3e8ff", text: "#7e22ce", border: "#d8b4fe" }, // Purple
-    "Ryan":  { bg: "#dcfce7", text: "#15803d", border: "#86efac" }, // Green
-    "Dad":   { bg: "#ffedd5", text: "#c2410c", border: "#fdba74" }, // Orange
-    "Mom":   { bg: "#fce7f3", text: "#be185d", border: "#f9a8d4" }  // Pink
+    "Marek": { bg: "#f3e8ff", text: "#7e22ce", border: "#d8b4fe" }, 
+    "Ryan":  { bg: "#dcfce7", text: "#15803d", border: "#86efac" }, 
+    "Dad":   { bg: "#ffedd5", text: "#c2410c", border: "#fdba74" }, 
+    "Mom":   { bg: "#fce7f3", text: "#be185d", border: "#f9a8d4" }  
   };
 
   let currentUser = sessionStorage.getItem('bige_current_user');
@@ -512,11 +506,11 @@
   let rankState = null;
   let unsubscribeSnapshot = null;
 
-  // Header Scroll Listener
+  // Header Scroll Listener: Collapse on scroll down, uncollapse ONLY at the absolute top (<=10px)
   window.addEventListener('scroll', () => {
-    if (window.scrollY > 40) {
+    if (window.scrollY > 50) {
       document.body.classList.add('scrolled-down');
-    } else {
+    } else if (window.scrollY <= 10) {
       document.body.classList.remove('scrolled-down');
     }
   });
@@ -546,7 +540,7 @@
     }
   }
 
-  // Helper to calculate item popularity score (Must Try = 2 pts, Want to Try = 1 pt)
+  // Helper to calculate item popularity score
   function getPopularityScore(itemId) {
     let score = 0;
     USERS.forEach(u => {
@@ -557,7 +551,6 @@
     return score;
   }
 
-  // Auto-Save Configuration Defaults Helper
   function autoSaveDefaults() {
     if (!appState.savedDefaults) appState.savedDefaults = { categories: {}, ratings: {} };
     appState.savedDefaults.categories = JSON.parse(JSON.stringify(appState.categories || {}));
@@ -573,11 +566,10 @@
         return userState.categories[itemId];
     }
     
-    // Default Fallbacks
     if (userName === 'Marek') {
         return item.category;
     } else {
-        return 'opt'; // Uncategorized blank slate for Mom, Dad, Ryan
+        return 'opt'; 
     }
   }
 
@@ -587,7 +579,6 @@
     appState.categories[itemId] = newCategory;
     
     autoSaveDefaults();
-    
     renderItems(); 
     pushStateToCloud();
   }
@@ -635,20 +626,15 @@
 
     dropdown.onchange = (e) => {
       viewingUser = e.target.value;
-      
-      // Update appState reference to the selected user's state
       appState = allUsersState[viewingUser];
-      
       const footerActions = document.querySelector('.footer-actions');
       if (footerActions) footerActions.style.display = (viewingUser === currentUser) ? 'flex' : 'none';
-      
       document.getElementById('saveIndicator').textContent = viewingUser === currentUser ? '✓ Synced' : `👁 Viewing ${viewingUser}`;
       renderItems();
       renderLeaderboard();
     };
   }
 
-  // Listens to the entire 'bites_users' collection
   function listenToAllUsers() {
     document.getElementById('saveIndicator').textContent = 'Syncing...';
     
@@ -670,7 +656,6 @@
         }
       });
       
-      // Ensure local state points to the active viewer
       if(!allUsersState[viewingUser]) {
          allUsersState[viewingUser] = { checked: {}, notes: {}, ratings: {}, rankedList: [], categories: {}, savedDefaults: null };
       }
@@ -700,30 +685,20 @@
     return true;
   }
 
-  function getStarsHTML(itemId, currentVal) {
-    let html = `<div class="stars-wrap">`;
-    for(let i=1; i<=5; i++) {
-      let fillClass = 'empty';
-      if (currentVal >= i) fillClass = 'full';
-      else if (currentVal >= i - 0.5) fillClass = 'half';
-      html += `
-        <span class="star ${fillClass}">
-          <div class="star-hitbox left" onclick="event.stopPropagation(); setRating('${itemId}', ${i - 0.5})"></div>
-          <div class="star-hitbox right" onclick="event.stopPropagation(); setRating('${itemId}', ${i})"></div>
-        </span>`;
-    }
-    html += `</div>`;
-    return html;
-  }
-
+  // 10-Point Rating Logic handler
   window.setRating = function(itemId, val) {
     if (!canEdit()) return;
     if (!appState.ratings) appState.ratings = {};
-    if (appState.ratings[itemId] === val) delete appState.ratings[itemId];
-    else appState.ratings[itemId] = val;
+    
+    let numVal = parseFloat(val);
+    if (isNaN(numVal) || numVal <= 0) {
+      delete appState.ratings[itemId];
+    } else {
+      if (numVal > 10) numVal = 10;
+      appState.ratings[itemId] = Number(numVal.toFixed(1));
+    }
     
     autoSaveDefaults();
-    
     renderItems();
     renderLeaderboard();
     pushStateToCloud();
@@ -784,7 +759,6 @@
     const checkedCount = appState.checked ? Object.values(appState.checked).filter(Boolean).length : 0;
     const pct = Math.round((checkedCount / total) * 100);
     
-    // Check against dynamically assigned categories
     const mustTries = ITEMS.filter(i => getCustomCategory(i.id, viewingUser) === 'must');
     const mustChecked = mustTries.filter(i => appState.checked && appState.checked[i.id]).length;
 
@@ -804,7 +778,7 @@
       const item = ITEMS.find(i => i.id === id);
       if (!item) return;
       const rating = (appState.ratings && appState.ratings[id]) ? appState.ratings[id] : 0;
-      let starStr = rating > 0 ? `★ ${rating}` : '';
+      let scoreStr = rating > 0 ? `${rating}/10` : '';
       html += `
         <div class="rank-row">
           <div class="rank-number">#${index + 1}</div>
@@ -812,7 +786,7 @@
             <div class="rank-name">${item.item}</div>
             <div class="rank-vendor">${item.vendor}</div>
           </div>
-          <div class="rank-stars">${starStr}</div>
+          <div class="rank-stars">${scoreStr}</div>
         </div>`;
     });
     html += `</div>`;
@@ -877,7 +851,6 @@
         if (!groups[item.location]) groups[item.location] = [];
         groups[item.location].push(item);
       });
-      // Sort items within each location by popularity score (Must Try = 2, Want to Try = 1)
       for (const loc in groups) {
         groups[loc].sort((a, b) => getPopularityScore(b.id) - getPopularityScore(a.id));
       }
@@ -951,7 +924,6 @@
           </select>
         `;
 
-        // Generate Universal Group Badges
         let friendActivityHtml = '';
         let mustUsers = [];
         let wantUsers = [];
@@ -964,12 +936,11 @@
           if (uCat === 'must') mustUsers.push(u);
           else if (uCat === 'want') wantUsers.push(u);
 
-          // Only show other users' star ratings
           if (u !== viewingUser) {
             const uRating = (uState.ratings && uState.ratings[item.id]) ? uState.ratings[item.id] : 0;
             if (uRating > 0) {
               const c = USER_COLORS[u] || { bg: "#e0f2fe", text: "#0369a1", border: "#bae6fd" };
-              ratingsHtml += `<span class="friend-rating-badge" style="background:${c.bg}; color:${c.text}; border-color:${c.border}">${u}: ★ ${uRating}</span>`;
+              ratingsHtml += `<span class="friend-rating-badge" style="background:${c.bg}; color:${c.text}; border-color:${c.border}">${u}: ★ ${uRating}/10</span>`;
             }
           }
         });
@@ -998,9 +969,9 @@
             ${friendActivityHtml}
             
             <div class="feedback-area">
-              <div class="star-row">
-                <span class="star-label">Rate this:</span>
-                ${getStarsHTML(item.id, rating)}
+              <div class="rating-row">
+                <span class="rating-label">Rate this (Out of 10):</span>
+                <input type="number" class="rating-input" data-id="${item.id}" min="0" max="10" step="0.1" placeholder="e.g. 8.5" value="${rating > 0 ? rating : ''}" ${isReadOnly ? 'readonly' : ''} onblur="setRating('${item.id}', this.value)" onkeypress="if(event.key==='Enter') this.blur()">
               </div>
               <input type="text" class="note-input" data-id="${item.id}" placeholder="${isReadOnly ? 'No notes added' : 'Add personal note or review...'}" value="${note.replace(/"/g, '&quot;')}" ${isReadOnly ? 'readonly' : ''}>
             </div>
@@ -1108,7 +1079,6 @@
   });
 
   // --- Reset to Defaults Implementation ---
-
   document.getElementById('resetBtn').addEventListener('click', () => {
     if (!canEdit()) return;
     if (confirm('WARNING: Are you sure you want to reset? This clears your checks, tier list, and notes. Categories and ratings will revert to your automatically saved defaults.')) {
