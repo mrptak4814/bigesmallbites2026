@@ -64,29 +64,30 @@
     background: var(--bige-blue);
     border-top: 8px solid var(--bige-red);
     color: #ffffff;
-    padding: 16px 16px 0;
     position: sticky;
     top: 0;
     z-index: 100;
     box-shadow: 0 4px 12px rgba(0,0,0,0.25);
-    transition: padding 0.3s ease;
-  }
-  body.scrolled-down header {
-    padding-top: 10px;
   }
 
-  /* Collapsible Header Sections */
-  .header-collapsible-group {
-    max-height: 300px;
-    opacity: 1;
-    overflow: hidden;
-    transition: max-height 0.3s ease, opacity 0.2s ease;
+  /* Silky Smooth CSS Grid Header Transition */
+  .header-collapsible-wrapper {
+    display: grid;
+    grid-template-rows: 1fr;
+    transition: grid-template-rows 0.4s cubic-bezier(0.25, 1, 0.5, 1), opacity 0.3s ease;
   }
-  body.scrolled-down .header-collapsible-group {
-    max-height: 0;
+  body.scrolled-down .header-collapsible-wrapper {
+    grid-template-rows: 0fr;
     opacity: 0;
     pointer-events: none;
   }
+  .header-collapsible-group {
+    min-height: 0;
+    overflow: hidden;
+  }
+  
+  /* Padding wrapper to protect the content spacing during grid collapse */
+  .header-padding-box { padding: 16px 16px 0; }
 
   .header-top {
     display: flex; justify-content: space-between; align-items: center;
@@ -139,17 +140,12 @@
   .nav-tab.active { color: #fff; border-bottom-color: var(--bige-red); }
 
   /* Toolbar (Search & Filter) */
-  .toolbar { background: var(--bige-blue); padding-bottom: 12px; }
+  .toolbar { background: var(--bige-blue); padding-bottom: 12px; padding-top: 12px;}
   
   .progress-card {
-    max-width: 900px; margin: 12px auto;
+    max-width: 900px; margin: 0 auto 12px;
     background: rgba(0,0,0,0.25); padding: 12px 14px;
     border-radius: 8px; display: flex; flex-direction: column; gap: 8px;
-    max-height: 100px; opacity: 1; overflow: hidden;
-    transition: all 0.3s ease;
-  }
-  body.scrolled-down .progress-card {
-    max-height: 0; opacity: 0; margin: 0 auto; padding: 0 14px; pointer-events: none;
   }
 
   .progress-stats {
@@ -162,14 +158,14 @@
   }
   .progress-bar-fill { height: 100%; background: var(--bige-red); width: 0%; transition: width 0.3s ease; }
 
-  .search-wrap { max-width: 900px; margin: 0 auto; }
+  .search-wrap { max-width: 900px; margin: 0 auto; padding: 0 16px; }
   .search-input {
     width: 100%; padding: 12px 16px; border-radius: 8px; border: none;
     font-size: 0.95rem; outline: none; box-shadow: 0 2px 6px rgba(0,0,0,0.15);
   }
 
   .sort-bar {
-    max-width: 900px; margin: 12px auto 0; padding: 0 12px; display: flex; align-items: center; gap: 8px;
+    max-width: 900px; margin: 12px auto 0; padding: 0 16px; display: flex; align-items: center; gap: 8px;
   }
   .sort-label { font-size: 0.8rem; font-weight: 700; color: #cbd5e1; text-transform: uppercase; }
   .sort-select {
@@ -179,7 +175,7 @@
 
   .filter-bar {
     max-width: 900px; margin: 12px auto 0; display: flex; gap: 8px;
-    overflow-x: auto; padding-bottom: 6px; scrollbar-width: none;
+    overflow-x: auto; padding-bottom: 6px; padding-left: 16px; padding-right: 16px; scrollbar-width: none;
   }
   .filter-bar::-webkit-scrollbar { display: none; }
   .filter-chip {
@@ -361,7 +357,7 @@
 </head>
 <body>
 
-<div class="version-tag">v3.5.15</div>
+<div class="version-tag">v3.5.16</div>
 
 <!-- Login Overlay -->
 <div id="loginOverlay">
@@ -371,35 +367,40 @@
 </div>
 
 <header id="mainHeader">
-  <div class="header-collapsible-group">
-    <div class="header-top">
-      <div class="app-title">🎪 The Big E Bites</div>
-      <div class="badge-saved" id="saveIndicator">Connecting...</div>
-    </div>
+  <div class="header-collapsible-wrapper">
+    <div class="header-collapsible-group">
+      <div class="header-padding-box">
+        <div class="header-top">
+          <div class="app-title">🎪 The Big E Bites</div>
+          <div class="badge-saved" id="saveIndicator">Connecting...</div>
+        </div>
 
-    <div class="viewer-wrap">
-      <span class="viewer-label">Viewing:</span>
-      <select id="userDropdown" class="viewer-select"></select>
-      <button class="btn-switch-user" id="btnSwitchUser">Change</button>
-    </div>
+        <div class="viewer-wrap">
+          <span class="viewer-label">Viewing:</span>
+          <select id="userDropdown" class="viewer-select"></select>
+          <button class="btn-switch-user" id="btnSwitchUser">Change</button>
+        </div>
 
-    <div class="nav-tabs">
-      <button class="nav-tab active" id="tabMenu" onclick="switchTab('menu')">Food Menu</button>
-      <button class="nav-tab" id="tabLeaderboard" onclick="switchTab('leaderboard')">Leaderboard</button>
+        <div class="nav-tabs">
+          <button class="nav-tab active" id="tabMenu" onclick="switchTab('menu')">Food Menu</button>
+          <button class="nav-tab" id="tabLeaderboard" onclick="switchTab('leaderboard')">Leaderboard</button>
+        </div>
+        
+        <!-- Progress Bar seamlessly embedded in the collapsible top area -->
+        <div class="progress-card">
+          <div class="progress-stats">
+            <span id="overallProgress">0 / 87 Tried (0%)</span>
+            <span id="mustTryProgress">⭐ 0 Must Tries Checked</span>
+          </div>
+          <div class="progress-bar-wrap">
+            <div class="progress-bar-fill" id="progressBar"></div>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 
   <div id="toolbarMenu" class="toolbar">
-    <div class="progress-card">
-      <div class="progress-stats">
-        <span id="overallProgress">0 / 87 Tried (0%)</span>
-        <span id="mustTryProgress">⭐ 0 Must Tries Checked</span>
-      </div>
-      <div class="progress-bar-wrap">
-        <div class="progress-bar-fill" id="progressBar"></div>
-      </div>
-    </div>
-    
     <div class="search-wrap">
       <input type="text" id="searchInput" class="search-input" placeholder="Search by food, vendor, or ingredient...">
     </div>
@@ -504,7 +505,6 @@
 
   const USERS = ["Marek", "Ryan", "Dad", "Mom"];
   
-  // Permanent User Rating Colors
   const USER_COLORS = {
     "Marek": { bg: "#f3e8ff", text: "#7e22ce", border: "#d8b4fe" }, 
     "Ryan":  { bg: "#dcfce7", text: "#15803d", border: "#86efac" }, 
@@ -515,14 +515,12 @@
   let currentUser = sessionStorage.getItem('bige_current_user');
   let viewingUser = currentUser;
   
-  // Entire synchronized group state
   let allUsersState = {};
   USERS.forEach(u => allUsersState[u] = { checked: {}, notes: {}, ratings: {}, rankedList: [], categories: {}, savedDefaults: null });
   let appState = allUsersState[currentUser];
   
-  // Advanced Filter & Sort Engine State
   let filterState = { must: false, want: false, status: 'all' };
-  let currentSort = 'location'; // default sort
+  let currentSort = 'location';
 
   let folderStates = {}; 
   ITEMS.forEach(item => { folderStates[item.location] = false; });
@@ -531,14 +529,43 @@
   let rankState = null;
   let unsubscribeSnapshot = null;
 
-  // Header Scroll Listener: Collapse on scroll down, uncollapse ONLY at the absolute top (<=10px)
+  // Smoothed "Pull to Reveal" Scroll Engine
+  let lastScrollY = window.scrollY;
+  let startTouchY = 0;
+
   window.addEventListener('scroll', () => {
-    if (window.scrollY > 50) {
+    const currentScrollY = window.scrollY;
+    
+    // Hide header entirely when scrolling down past the threshold
+    if (currentScrollY > 80 && currentScrollY > lastScrollY) {
       document.body.classList.add('scrolled-down');
-    } else if (window.scrollY <= 10) {
+    }
+    
+    // Fallback for iOS overscroll (rubber-banding above the top of the page)
+    if (currentScrollY < -5) {
       document.body.classList.remove('scrolled-down');
     }
-  });
+    
+    lastScrollY = currentScrollY;
+  }, { passive: true });
+
+  // Mobile Pull-Down Intent Listener (Only triggers if already at the top)
+  window.addEventListener('touchstart', (e) => { 
+    startTouchY = e.touches[0].clientY; 
+  }, { passive: true });
+  
+  window.addEventListener('touchmove', (e) => {
+    if (window.scrollY <= 5 && e.touches[0].clientY > startTouchY + 25) {
+      document.body.classList.remove('scrolled-down');
+    }
+  }, { passive: true });
+
+  // Desktop Mouse-Wheel Intent Listener
+  window.addEventListener('wheel', (e) => {
+    if (window.scrollY <= 5 && e.deltaY < -15) {
+      document.body.classList.remove('scrolled-down');
+    }
+  }, { passive: true });
 
   document.getElementById('btnSwitchUser').addEventListener('click', () => {
     if (confirm("Sign out of your current profile?")) {
@@ -565,7 +592,6 @@
     }
   }
 
-  // Helper to calculate item popularity score
   function getPopularityScore(itemId) {
     let score = 0;
     USERS.forEach(u => {
@@ -651,8 +677,6 @@
 
     dropdown.onchange = (e) => {
       viewingUser = e.target.value;
-      
-      // Update appState reference to the selected user's state
       appState = allUsersState[viewingUser];
       
       const footerActions = document.querySelector('.footer-actions');
@@ -714,7 +738,6 @@
     return true;
   }
 
-  // 10-Point Rating Logic handler
   window.setRating = function(itemId, val) {
     if (!canEdit()) return;
     if (!appState.ratings) appState.ratings = {};
@@ -854,7 +877,6 @@
       return;
     }
 
-    // --- SORTING ENGINE ---
     if (currentSort === 'popularity') {
       filtered.sort((a, b) => getPopularityScore(b.id) - getPopularityScore(a.id));
     } else if (currentSort === 'rating') {
@@ -869,18 +891,16 @@
         });
         let avgA = countA === 0 ? 0 : sumA / countA;
         let avgB = countB === 0 ? 0 : sumB / countB;
-        return avgB - avgA; // Descending
+        return avgB - avgA; 
       });
     }
 
-    // --- GROUPING ENGINE ---
     const groups = {};
     if (currentSort === 'location') {
       filtered.forEach(item => {
         if (!groups[item.location]) groups[item.location] = [];
         groups[item.location].push(item);
       });
-      // Sort items within each location by popularity score (Must Try = 2, Want to Try = 1)
       for (const loc in groups) {
         groups[loc].sort((a, b) => getPopularityScore(b.id) - getPopularityScore(a.id));
       }
@@ -895,10 +915,7 @@
       document.getElementById('toggleText').textContent = 'Ranked by Avg Rating';
     }
 
-    // --- RENDERING ---
     let displayGroups = Object.keys(groups);
-
-    // Apply Physical Map Location Sorting
     if (currentSort === 'location') {
       displayGroups.sort((a, b) => {
         let idxA = LOCATION_ORDER.indexOf(a);
@@ -944,8 +961,8 @@
         const isRanked = rankIndex !== -1;
         
         const activeCat = getCustomCategory(item.id, viewingUser);
-
         const hasRatingClass = rating > 0 ? 'has-rating' : '';
+        
         const card = document.createElement('div');
         card.className = `food-card ${isChecked ? 'checked' : ''} ${isReadOnly ? 'readonly-mode' : ''} ${hasRatingClass}`;
         card.id = `card_${item.id}`;
@@ -991,7 +1008,6 @@
 
         if (mustUsers.length > 0) friendActivityHtml += `<span class="friend-rating-badge must">${mustUsers.join(', ')}: ⭐ Must Try</span>`;
         if (wantUsers.length > 0) friendActivityHtml += `<span class="friend-rating-badge want">${wantUsers.join(', ')}: ● Want to Try</span>`;
-        
         friendActivityHtml += ratingsHtml;
 
         if (friendActivityHtml) {
@@ -1096,7 +1112,6 @@
     });
   });
 
-  // Sort Listener
   document.getElementById('sortSelect').addEventListener('change', (e) => {
     currentSort = e.target.value;
     renderItems();
@@ -1122,7 +1137,6 @@
     renderItems();
   });
 
-  // --- Reset to Defaults Implementation ---
   document.getElementById('resetBtn').addEventListener('click', () => {
     if (!canEdit()) return;
     if (confirm('WARNING: Are you sure you want to reset? This clears your checks, tier list, and notes. Categories and ratings will revert to your automatically saved defaults.')) {
@@ -1150,7 +1164,6 @@
     }
   });
 
-  // Start App
   initializeIdentity();
 </script>
 
